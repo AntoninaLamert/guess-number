@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#171b35" />
+    <title>Угадай число</title>
+    <style>
+      :root {
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #f8f7ff;
+        background: #171b35;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        min-height: 100vh;
+        min-height: 100svh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        overflow-x: hidden;
+        isolation: isolate;
+        padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+        background:
+          radial-gradient(circle at 12% 15%, #633b9d 0, transparent 35%),
+          radial-gradient(circle at 90% 85%, #245f79 0, transparent 35%),
+          #171b35;
+      }
+
+      body::before,
+      body::after {
+        content: '';
+        position: fixed;
+        z-index: 0;
+        width: min(62vw, 620px);
+        aspect-ratio: 1;
+        border-radius: 50%;
+        filter: blur(65px);
+        opacity: .35;
+        pointer-events: none;
+        animation: drift 13s ease-in-out infinite alternate;
+      }
+
+      body::before { top: -22%; left: -12%; background: #b65cff; }
+      body::after { right: -14%; bottom: -26%; background: #34bce1; animation-delay: -6s; }
+
+      .game {
+        position: relative;
+        z-index: 1;
+        width: min(100%, 600px);
+        padding: clamp(24px, 5vw, 44px);
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, .16);
+        border-radius: 28px;
+        background: rgba(25, 28, 54, .9);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, .3);
+        animation: appear .6s both;
+        transition: box-shadow .4s, border-color .4s;
+      }
+
+      .game::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 70%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #d8c8ff, transparent);
+        animation: shine 7s linear infinite;
+      }
+
+      .game.win {
+        border-color: rgba(89, 244, 177, .55);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, .3), 0 0 70px rgba(56, 222, 156, .22);
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: #b9a4ff;
+        font-size: .78rem;
+        font-weight: 800;
+        letter-spacing: .16em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.4rem, 8vw, 3.8rem);
+        line-height: 1.05;
+        letter-spacing: -.055em;
+      }
+
+      .intro {
+        margin: 18px 0 28px;
+        color: #c6c9dc;
+        font-size: 1.05rem;
+        line-height: 1.55;
+      }
+
+      .range {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        min-height: 116px;
+        margin-bottom: 28px;
+        border-radius: 20px;
+        background: radial-gradient(circle at 50% 50%, rgba(168, 140, 255, .14), rgba(255, 255, 255, .045) 65%);
+        color: #a6abc8;
+        font-weight: 700;
+      }
+
+      .range strong { color: #fff; font-size: 2rem; }
+
+      .mystery {
+        display: grid;
+        place-items: center;
+        width: 68px;
+        height: 68px;
+        border: 2px solid rgba(190, 169, 255, .65);
+        border-radius: 20px;
+        background: linear-gradient(145deg, #956fff, #623cc5);
+        color: #fff;
+        box-shadow: 0 0 0 8px rgba(168, 140, 255, .08), 0 10px 35px rgba(135, 94, 255, .35);
+        font-size: 2.2rem;
+        line-height: 1;
+        animation: bob 3s ease-in-out infinite;
+      }
+
+      .game.win .mystery { animation: win-pop .55s both; background: linear-gradient(145deg, #52eeb1, #208c77); font-size: clamp(1.5rem, 5vw, 2.1rem); }
+
+      label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 700;
+      }
+
+      .controls { display: flex; gap: 10px; }
+
+      input {
+        width: 100%;
+        min-width: 0;
+        min-height: 56px;
+        padding: 14px 16px;
+        border: 2px solid #535776;
+        border-radius: 14px;
+        outline: none;
+        background: #222642;
+        color: #fff;
+        font: inherit;
+        font-size: 1.2rem;
+      }
+
+      input:focus { border-color: #a88cff; }
+      input:disabled { opacity: .7; }
+
+      button {
+        min-height: 48px;
+        border: 0;
+        border-radius: 14px;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 800;
+        transition: transform .15s, background .15s, box-shadow .15s;
+      }
+
+      @media (hover: hover) {
+        button:hover { transform: translateY(-2px); }
+      }
+      button:active { transform: translateY(0); }
+      button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+      .guess-button {
+        flex: none;
+        padding: 0 23px;
+        background: linear-gradient(135deg, #c5afff, #a88cff);
+        color: #19152d;
+        box-shadow: 0 8px 22px rgba(168, 140, 255, .22);
+      }
+
+      .guess-button:hover { box-shadow: 0 10px 28px rgba(168, 140, 255, .38); }
+      .guess-button:disabled { cursor: default; opacity: .5; transform: none; }
+
+      .feedback {
+        min-height: 70px;
+        margin: 20px 0 8px;
+        display: flex;
+        align-items: center;
+        padding: 16px 18px;
+        border-radius: 14px;
+        background: rgba(168, 140, 255, .12);
+        color: #e4dbff;
+        line-height: 1.45;
+      }
+
+      .feedback.pop { animation: feedback-pop .3s ease-out; }
+      .feedback.higher { background: rgba(255, 190, 96, .13); color: #ffdb9e; }
+      .feedback.lower { background: rgba(99, 202, 255, .13); color: #bceaff; }
+      .feedback.success { background: rgba(79, 220, 168, .15); color: #a8f1d5; }
+      .feedback.error { background: rgba(255, 147, 147, .12); color: #ffbdbd; }
+      .feedback.error.pop { animation: shake .35s ease-in-out; }
+
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-top: 24px;
+        color: #b4b9d0;
+        font-size: .9rem;
+      }
+
+      .stats { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+      .stats strong { color: #fff; }
+
+      .reset-button {
+        flex: none;
+        padding: 9px 2px 9px 10px;
+        background: transparent;
+        color: #b9a4ff;
+      }
+
+      .reset-button:hover { color: #d7caff; }
+
+      .footer-actions { display: flex; align-items: center; gap: 14px; }
+
+      .sound-button {
+        padding: 9px 10px;
+        border: 1px solid rgba(185, 164, 255, .3);
+        background: rgba(168, 140, 255, .08);
+        color: #d7caff;
+      }
+
+      .sound-button[aria-pressed="false"] { color: #a6abc8; }
+      .sound-button:hover { background: rgba(168, 140, 255, .16); }
+
+      .confetti-layer { position: fixed; inset: 0; z-index: 5; overflow: hidden; pointer-events: none; }
+      .confetti {
+        position: absolute;
+        top: -20px;
+        left: var(--left);
+        width: var(--size);
+        height: calc(var(--size) * 1.5);
+        border-radius: 2px;
+        background: var(--color);
+        animation: confetti-fall var(--duration) ease-in forwards;
+        animation-delay: var(--delay);
+      }
+
+      @keyframes appear { from { opacity: 0; transform: translateY(18px) scale(.98); } to { opacity: 1; transform: none; } }
+      @keyframes drift { to { transform: translate(9vw, 8vh) scale(1.15); } }
+      @keyframes shine { 0% { left: -100%; } 55%, 100% { left: 150%; } }
+      @keyframes bob { 50% { transform: translateY(-7px) rotate(5deg); } }
+      @keyframes win-pop { 50% { transform: scale(1.22) rotate(-8deg); } }
+      @keyframes feedback-pop { from { opacity: .5; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+      @keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+      @keyframes confetti-fall { to { transform: translate3d(var(--drift), 110vh, 0) rotate(var(--spin)); opacity: 0; } }
+
+      @media (max-width: 420px) {
+        body { padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+        .game { padding: 24px 20px; border-radius: 22px; }
+        .intro { margin-bottom: 22px; font-size: 1rem; }
+        .range { min-height: 100px; margin-bottom: 24px; }
+        .mystery { width: 58px; height: 58px; border-radius: 17px; }
+        .controls { flex-direction: column; }
+        .guess-button { padding: 16px; }
+        .footer { align-items: stretch; flex-direction: column; }
+        .footer-actions { justify-content: space-between; }
+        .reset-button { align-self: flex-start; padding-left: 0; }
+      }
+
+      @media (max-width: 340px) {
+        h1 { font-size: 2.15rem; }
+        .range { gap: 12px; }
+        .range strong { font-size: 1.65rem; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="game">
+      <p class="eyebrow">Мини-игра</p>
+      <h1>Угадай число</h1>
+      <p class="intro">Я загадал число от 1 до 100. Вводи варианты, а я подскажу, куда двигаться.</p>
+
+      <div class="range" aria-label="Число от 1 до 100">
+        <strong>1</strong><span>—</span><span class="mystery" id="mystery" aria-hidden="true">?</span><span>—</span><strong>100</strong>
+      </div>
+
+      <form id="guess-form" novalidate>
+        <label for="guess">Твой вариант</label>
+        <div class="controls">
+          <input id="guess" name="guess" type="number" min="1" max="100" step="1" inputmode="numeric" autocomplete="off" placeholder="Например, 50" required aria-describedby="feedback" />
+          <button class="guess-button" id="guess-button" type="submit">Проверить</button>
+        </div>
+      </form>
+
+      <p class="feedback" id="feedback" role="status" aria-live="polite">Начнём! Какое число я загадал?</p>
+
+      <div class="footer">
+        <div class="stats">
+          <span>Попытки: <strong id="attempts">0</strong></span>
+          <span>Рекорд: <strong id="best">—</strong></span>
+        </div>
+        <div class="footer-actions">
+          <button class="reset-button" id="reset-button" type="button">Новая игра ↗</button>
+          <button class="sound-button" id="sound-button" type="button" aria-pressed="true" aria-label="Звук включён" title="Звук включён">🔊 Звук</button>
+        </div>
+      </div>
+    </main>
+
+    <div class="confetti-layer" id="confetti-layer" aria-hidden="true"></div>
+
+    <script>
+      const game = document.querySelector('.game');
+      const form = document.querySelector('#guess-form');
+      const input = document.querySelector('#guess');
+      const feedback = document.querySelector('#feedback');
+      const attemptsDisplay = document.querySelector('#attempts');
+      const bestDisplay = document.querySelector('#best');
+      const guessButton = document.querySelector('#guess-button');
+      const resetButton = document.querySelector('#reset-button');
+      const soundButton = document.querySelector('#sound-button');
+      const mystery = document.querySelector('#mystery');
+      const confettiLayer = document.querySelector('#confetti-layer');
+      const storageKey = 'guess-the-number-best';
+      const soundStorageKey = 'guess-the-number-sound';
+
+      let secret;
+      let attempts;
+      let finished;
+      let best = null;
+      let soundEnabled = true;
+      let audioContext = null;
+
+      try {
+        const saved = Number(localStorage.getItem(storageKey));
+        if (Number.isInteger(saved) && saved > 0) best = saved;
+        soundEnabled = localStorage.getItem(soundStorageKey) !== 'off';
+      } catch (_) {
+        // The game also works when browser storage is unavailable.
+      }
+
+      function updateSoundButton() {
+        const icon = soundEnabled ? '🔊' : '🔇';
+        const label = soundEnabled ? 'Звук включён' : 'Звук выключен';
+        soundButton.textContent = `${icon} Звук`;
+        soundButton.setAttribute('aria-pressed', String(soundEnabled));
+        soundButton.setAttribute('aria-label', label);
+        soundButton.title = label;
+      }
+
+      function getAudioContext() {
+        if (audioContext) return audioContext;
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return null;
+        try {
+          audioContext = new AudioContextClass();
+          return audioContext;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function playTone(frequency, duration, type = 'sine', volume = .08, delay = 0) {
+        if (!soundEnabled) return;
+        const context = getAudioContext();
+        if (!context) return;
+        if (context.state === 'suspended') context.resume().catch(() => {});
+
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        const start = context.currentTime + delay;
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, start);
+        gain.gain.setValueAtTime(.0001, start);
+        gain.gain.exponentialRampToValueAtTime(volume, start + .025);
+        gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(start);
+        oscillator.stop(start + duration + .02);
+      }
+
+      function playFeedbackSound(type) {
+        if (type === 'higher') playTone(620, .13, 'triangle');
+        if (type === 'lower') playTone(330, .16, 'triangle');
+        if (type === 'error') {
+          playTone(190, .12, 'sawtooth', .045);
+          playTone(150, .16, 'sawtooth', .04, .1);
+        }
+        if (type === 'success') {
+          playTone(523, .2, 'sine', .075);
+          playTone(659, .2, 'sine', .075, .12);
+          playTone(784, .34, 'sine', .085, .24);
+        }
+      }
+
+      function showFeedback(message, type = '') {
+        feedback.textContent = message;
+        feedback.className = `feedback ${type}`.trim();
+        void feedback.offsetWidth;
+        feedback.classList.add('pop');
+        playFeedbackSound(type);
+      }
+
+      function celebrate() {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const colors = ['#c5afff', '#57e6ba', '#ffd27c', '#78d8ff', '#ff91bf'];
+        for (let i = 0; i < 36; i += 1) {
+          const piece = document.createElement('span');
+          piece.className = 'confetti';
+          piece.style.setProperty('--left', `${Math.random() * 100}%`);
+          piece.style.setProperty('--size', `${6 + Math.random() * 7}px`);
+          piece.style.setProperty('--color', colors[i % colors.length]);
+          piece.style.setProperty('--duration', `${1.5 + Math.random() * .9}s`);
+          piece.style.setProperty('--delay', `${Math.random() * .35}s`);
+          piece.style.setProperty('--drift', `${Math.random() * 240 - 120}px`);
+          piece.style.setProperty('--spin', `${Math.random() * 900 - 450}deg`);
+          confettiLayer.append(piece);
+          piece.addEventListener('animationend', () => piece.remove(), { once: true });
+        }
+      }
+
+      function attemptWord(count) {
+        if (count % 100 >= 11 && count % 100 <= 14) return 'попыток';
+        if (count % 10 === 1) return 'попытку';
+        if (count % 10 >= 2 && count % 10 <= 4) return 'попытки';
+        return 'попыток';
+      }
+
+      function startGame() {
+        secret = Math.floor(Math.random() * 100) + 1;
+        attempts = 0;
+        finished = false;
+        game.classList.remove('win');
+        mystery.textContent = '?';
+        confettiLayer.replaceChildren();
+        attemptsDisplay.textContent = '0';
+        bestDisplay.textContent = best ?? '—';
+        input.disabled = false;
+        guessButton.disabled = false;
+        input.value = '';
+        showFeedback('Начнём! Какое число я загадал?');
+        if (window.matchMedia('(pointer: fine)').matches) input.focus();
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        if (finished) return;
+
+        const value = input.value.trim();
+        const guess = Number(value);
+        if (value === '' || !Number.isInteger(guess) || guess < 1 || guess > 100) {
+          showFeedback('Введи целое число от 1 до 100.', 'error');
+          input.focus();
+          return;
+        }
+
+        attempts += 1;
+        attemptsDisplay.textContent = attempts;
+
+        if (guess === secret) {
+          finished = true;
+          game.classList.add('win');
+          mystery.textContent = String(secret);
+          input.disabled = true;
+          guessButton.disabled = true;
+          if (best === null || attempts < best) {
+            best = attempts;
+            bestDisplay.textContent = best;
+            try { localStorage.setItem(storageKey, String(best)); } catch (_) {}
+          }
+          showFeedback(`Верно! Это ${secret}. Ты угадал за ${attempts} ${attemptWord(attempts)}. Сыграем ещё?`, 'success');
+          celebrate();
+          resetButton.focus();
+          return;
+        }
+
+        showFeedback(guess < secret ? `↑ Больше, чем ${guess}. Попробуй ещё!` : `↓ Меньше, чем ${guess}. Попробуй ещё!`, guess < secret ? 'higher' : 'lower');
+        input.select();
+      });
+
+      resetButton.addEventListener('click', startGame);
+      soundButton.addEventListener('click', () => {
+        soundEnabled = !soundEnabled;
+        updateSoundButton();
+        try { localStorage.setItem(soundStorageKey, soundEnabled ? 'on' : 'off'); } catch (_) {}
+        if (soundEnabled) playTone(660, .1, 'sine', .06);
+      });
+      updateSoundButton();
+      startGame();
+    </script>
+  </body>
+</html>
